@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { create, all } from 'mathjs'
 import { 
-  RotateCcw, X, Hash, 
-  Settings, HelpCircle, 
+  X, 
   ChevronRight, Divide, Plus, Minus, Equal, Trash2,
-  Clock, Cpu, Zap, Box, Layout, Palette, LineChart as ChartIcon, Calculator as CalcIcon,
-  Maximize2, Minimize2, Activity
+  Clock, Cpu, Zap, Layout, Palette, LineChart as ChartIcon, Calculator as CalcIcon,
+  Activity
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -59,15 +58,34 @@ const buttons = [
 export default function ScientificCalculator() {
   const [display, setDisplay] = useState('0')
   const [expression, setExpression] = useState('')
-  const [history, setHistory] = useState<{ expr: string; result: string; timestamp: number }[]>([])
-  const [isRad, setIsRad] = useState(true)
-  const [memory, setMemory] = useState(0)
+  const [history, setHistory] = useState<{ expr: string; result: string; timestamp: number }[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('calc-history')
+      return saved ? JSON.parse(saved) : []
+    }
+    return []
+  })
+  const [memory, setMemory] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('calc-memory')
+      return saved ? parseFloat(saved) : 0
+    }
+    return 0
+  })
   const [lastResult, setLastResult] = useState<string | null>(null)
   const [currentTheme, setCurrentTheme] = useState<Theme>('indigo')
   const [mode, setMode] = useState<Mode>('calculator')
   const [graphExpr, setGraphExpr] = useState('sin(x)')
   
   const theme = themes[currentTheme]
+
+  useEffect(() => {
+    localStorage.setItem('calc-history', JSON.stringify(history))
+  }, [history])
+
+  useEffect(() => {
+    localStorage.setItem('calc-memory', memory.toString())
+  }, [memory])
 
   const graphData = useMemo(() => {
     const data = []
@@ -106,8 +124,7 @@ export default function ScientificCalculator() {
     } else if (type === 'sci') {
       try {
         if (['sin', 'cos', 'tan'].includes(label)) {
-          const degToRad = isRad ? 1 : Math.PI / 180
-          const res = math.evaluate(`${label}(${display} * ${degToRad})`)
+          const res = math.evaluate(`${label}(${display})`)
           setDisplay(res.toFixed(8).replace(/\.?0+$/, ''))
         } else if (val.includes('(')) { setDisplay(math.evaluate(`${val}${display})`).toString()) }
         else { setDisplay(math.evaluate(`${display}${val}`).toString()) }
@@ -137,6 +154,15 @@ export default function ScientificCalculator() {
               <div><h1 className="text-lg font-bold tracking-tight">{theme.name}</h1><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Dual Engine Active</p></div>
             </div>
             <div className="space-y-6">
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center gap-2 mb-3 text-slate-500">
+                  <Activity className="w-4 h-4" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Memory Bank</span>
+                </div>
+                <div className={cn("text-2xl font-light truncate transition-colors duration-500", theme.accent)}>
+                  {memory.toLocaleString()}
+                </div>
+              </div>
               <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5">
                 <div className="flex items-center gap-2 mb-4 text-slate-500"><Palette className="w-4 h-4" /><span className="text-[10px] font-bold uppercase tracking-widest">Select Vibe</span></div>
                 <div className="flex justify-between">
